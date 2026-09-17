@@ -57,7 +57,10 @@ config.save()?;
 
 ## Licence
 
-MIT or Apache-2.0, at your option.
+MIT ([LICENSE-MIT]) or Apache-2.0 ([LICENSE-APACHE]), at your option.
+
+[LICENSE-MIT]: LICENSE-MIT
+[LICENSE-APACHE]: LICENSE-APACHE
 
 [spacenavd]: https://spacenav.sourceforge.net/
 [x11rb]: https://crates.io/crates/x11rb
