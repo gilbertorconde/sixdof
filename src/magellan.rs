@@ -142,7 +142,7 @@ impl Client {
     /// Waits for the next event, giving up after `timeout`.
     ///
     /// The display connection offers no timed wait, so this looks every
-    /// [`POLL_STEP`] until the deadline passes.
+    /// 20 ms until the deadline passes.
     pub fn read_timeout(&mut self, timeout: Duration) -> Result<Option<Event>, Error> {
         let deadline = Instant::now() + timeout;
         loop {
