@@ -22,6 +22,7 @@
 
 #![cfg(unix)]
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 mod client;
 mod codec;
@@ -107,11 +108,19 @@ pub enum Event {
     /// The puck moved.
     Motion(Motion),
     /// A button went down or came up.
-    Button { index: u32, pressed: bool },
+    Button {
+        /// Which button, as the daemon numbers them after its own mapping.
+        index: u32,
+        /// Down, as opposed to up.
+        pressed: bool,
+    },
     /// A device was plugged in or unplugged. Call
     /// [`Client::refresh_device`] to learn what it is.
     Device {
+        /// Plugged in, as opposed to unplugged.
         added: bool,
+        /// The daemon's handle for this device, stable while it stays
+        /// connected.
         id: i32,
         /// The daemon's device-type code.
         device_type: i32,
@@ -119,11 +128,24 @@ pub enum Event {
         usb_id: Option<(u16, u16)>,
     },
     /// The daemon's configuration changed.
-    Config { item: i32 },
+    Config {
+        /// Which setting, as the daemon numbers them.
+        item: i32,
+    },
     /// An uncalibrated axis reading, sent only when asked for.
-    RawAxis { index: u32, value: i32 },
+    RawAxis {
+        /// Which axis on the device, before any mapping.
+        index: u32,
+        /// The reading, before dead zone, inversion or sensitivity.
+        value: i32,
+    },
     /// An unmapped button, sent only when asked for.
-    RawButton { index: u32, pressed: bool },
+    RawButton {
+        /// Which button on the device, before any mapping.
+        index: u32,
+        /// Down, as opposed to up.
+        pressed: bool,
+    },
 }
 
 /// Which events the daemon should send.
@@ -131,18 +153,27 @@ pub enum Event {
 pub struct EventMask(u32);
 
 impl EventMask {
+    /// The puck moved.
     pub const MOTION: EventMask = EventMask(0x01);
+    /// A button went down or came up.
     pub const BUTTON: EventMask = EventMask(0x02);
+    /// A device was plugged in or unplugged.
     pub const DEVICE: EventMask = EventMask(0x04);
+    /// The daemon's configuration changed.
     pub const CONFIG: EventMask = EventMask(0x08);
+    /// Axis readings as the device gives them, before the daemon's own
+    /// dead zone, inversion and sensitivity.
     pub const RAW_AXIS: EventMask = EventMask(0x10);
+    /// Button numbers as the device gives them, before mapping.
     pub const RAW_BUTTON: EventMask = EventMask(0x20);
     /// Motion and buttons — what a navigation client needs.
     pub const INPUT: EventMask = EventMask(Self::MOTION.0 | Self::BUTTON.0);
     /// Input plus hotplug, which is what a client gets on connecting.
     pub const DEFAULT: EventMask = EventMask(Self::INPUT.0 | Self::DEVICE.0);
+    /// Everything the daemon has to say.
     pub const ALL: EventMask = EventMask(0xffff);
 
+    /// The mask as the daemon's own bits.
     #[must_use]
     pub fn bits(self) -> u32 {
         self.0
@@ -154,6 +185,7 @@ impl EventMask {
         EventMask(bits & Self::ALL.0)
     }
 
+    /// Whether every kind in `other` is in this mask.
     #[must_use]
     pub fn contains(self, other: EventMask) -> bool {
         self.0 & other.0 == other.0
@@ -180,7 +212,9 @@ pub struct DeviceInfo {
     pub name: String,
     /// The node the daemon reads.
     pub path: Option<String>,
+    /// How many axes it reports — six on a puck.
     pub axes: u32,
+    /// How many buttons it has.
     pub buttons: u32,
     /// Vendor and product, absent on serial devices.
     pub usb_id: Option<(u16, u16)>,

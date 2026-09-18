@@ -30,6 +30,7 @@ impl std::fmt::Display for Backend {
 
 /// A device connection over whichever protocol answered.
 pub enum Source {
+    /// The daemon's socket: everything this crate offers.
     Daemon(Client),
     /// Boxed because a display connection carries far more state than a
     /// socket does.

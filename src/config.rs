@@ -29,7 +29,9 @@ pub enum ButtonAction {
     None,
     /// Puts sensitivity back to where it started.
     SensitivityReset,
+    /// Steps sensitivity up.
     SensitivityIncrease,
+    /// Steps sensitivity down.
     SensitivityDecrease,
     /// Holds the three rotation axes at zero.
     DisableRotation,
@@ -69,7 +71,9 @@ impl ButtonAction {
 /// The device's lamp.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LedMode {
+    /// Dark.
     Off,
+    /// Lit whenever the daemon is running.
     On,
     /// Lit while an application is listening.
     #[default]
@@ -112,6 +116,7 @@ impl Config<'_> {
         Ok(f32::from_bits(reply[1] as u32))
     }
 
+    /// Sets the scale applied to every axis.
     pub fn set_sensitivity(&mut self, sensitivity: f32) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_SENS, &[sensitivity.to_bits() as i32])
@@ -128,6 +133,7 @@ impl Config<'_> {
         Ok(out)
     }
 
+    /// Sets the per-axis scale: three translations, then three rotations.
     pub fn set_axis_sensitivity(&mut self, sensitivity: [f32; 6]) -> Result<(), Error> {
         let args = sensitivity.map(|value| value.to_bits() as i32);
         self.client.request(REQ_SCFG_SENS_AXIS, &args).map(drop)
@@ -140,6 +146,7 @@ impl Config<'_> {
         Ok(reply[2])
     }
 
+    /// Sets how far `axis` must move before the daemon reports it.
     pub fn set_dead_zone(&mut self, axis: u32, threshold: i32) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_DEADZONE, &[axis as i32, threshold])
@@ -156,6 +163,7 @@ impl Config<'_> {
         Ok(out)
     }
 
+    /// Sets which movements read backwards.
     pub fn set_inverted(&mut self, inverted: [bool; 6]) -> Result<(), Error> {
         let args = inverted.map(i32::from);
         self.client.request(REQ_SCFG_INVERT, &args).map(drop)
@@ -170,6 +178,8 @@ impl Config<'_> {
         Ok(reply[2])
     }
 
+    /// Sends a device axis to one of the six the daemon reports, or
+    /// drops it with `-1`.
     pub fn set_axis_map(&mut self, device_axis: u32, mapped_to: i32) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_AXISMAP, &[device_axis as i32, mapped_to])
@@ -184,6 +194,7 @@ impl Config<'_> {
         Ok(reply[2].max(0) as u32)
     }
 
+    /// Reports a device button under another number.
     pub fn set_button_map(&mut self, device_button: u32, mapped_to: u32) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_BNMAP, &[device_button as i32, mapped_to as i32])
@@ -198,6 +209,7 @@ impl Config<'_> {
         ButtonAction::from_code(reply[2])
     }
 
+    /// Gives a button an action the daemon performs itself.
     pub fn set_button_action(
         &mut self,
         device_button: u32,
@@ -217,6 +229,7 @@ impl Config<'_> {
         Ok(reply[2].max(0) as u32)
     }
 
+    /// Makes a button type a key, given as a keysym; `0` for none.
     pub fn set_key_map(&mut self, device_button: u32, keysym: u32) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_KBMAP, &[device_button as i32, keysym as i32])
@@ -229,17 +242,21 @@ impl Config<'_> {
         Ok(reply[1] != 0)
     }
 
+    /// Sets whether the daemon swaps the two axes older devices disagree
+    /// on.
     pub fn set_swap_yz(&mut self, swap: bool) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_SWAPYZ, &[i32::from(swap)])
             .map(drop)
     }
 
+    /// What the device's lamp is doing.
     pub fn led(&mut self) -> Result<LedMode, Error> {
         let reply = self.client.request(REQ_GCFG_LED, &[])?;
         LedMode::from_code(reply[1])
     }
 
+    /// Sets the device's lamp.
     pub fn set_led(&mut self, mode: LedMode) -> Result<(), Error> {
         self.client.request(REQ_SCFG_LED, &[mode.code()]).map(drop)
     }
@@ -251,6 +268,7 @@ impl Config<'_> {
         Ok(reply[1] != 0)
     }
 
+    /// Sets whether the daemon takes the device for itself.
     pub fn set_grab_device(&mut self, grab: bool) -> Result<(), Error> {
         self.client
             .request(REQ_SCFG_GRAB, &[i32::from(grab)])
@@ -262,6 +280,7 @@ impl Config<'_> {
         self.client.request_string(REQ_GCFG_SERDEV)
     }
 
+    /// Sets the serial port to look for a device on.
     pub fn set_serial_device(&mut self, path: &str) -> Result<(), Error> {
         self.client.send_string(REQ_SCFG_SERDEV, path)
     }
@@ -273,6 +292,8 @@ impl Config<'_> {
         Ok(u64::try_from(reply[1]).ok().map(Duration::from_millis))
     }
 
+    /// Sets how often the daemon repeats the last reading while the puck
+    /// is held; `None` reports only changes.
     pub fn set_repeat_interval(&mut self, interval: Option<Duration>) -> Result<(), Error> {
         let msec = match interval {
             Some(interval) => i32::try_from(interval.as_millis())
@@ -288,6 +309,7 @@ impl Config<'_> {
         self.client.request_string(REQ_GCFG_SOCKET)
     }
 
+    /// Sets the socket the daemon listens on, from its next start.
     pub fn set_socket_path(&mut self, path: &str) -> Result<(), Error> {
         self.client.send_string(REQ_SCFG_SOCKET, path)
     }
