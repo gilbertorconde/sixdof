@@ -1,5 +1,9 @@
 # sixdof
 
+[![Crates.io](https://img.shields.io/crates/v/sixdof.svg)](https://crates.io/crates/sixdof)
+[![Documentation](https://docs.rs/sixdof/badge.svg)](https://docs.rs/sixdof)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](#licence)
+
 A small, dependency-free Rust client for 6-degree-of-freedom input devices —
 SpaceMouse, SpaceNavigator, Spaceball and friends — on Unix.
 
@@ -49,9 +53,20 @@ config.save()?;
 # Ok::<(), sixdof::Error>(())
 ```
 
+## Platforms
+
+Unix only — the crate is empty on other targets, since it speaks to a daemon
+over a UNIX socket. Linux is where it is used and tested; anywhere spacenavd
+runs should work. Depend on it per-target if your own crate is portable:
+
+```toml
+[target.'cfg(unix)'.dependencies]
+sixdof = "0.1"
+```
+
 ## What it does not do
 
-- No Windows or macOS backend.
+- No Windows backend.
 - No daemon-less path: without a daemon running, `connect` fails and the
   caller is expected to retry.
 

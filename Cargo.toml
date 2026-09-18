@@ -5,9 +5,16 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.98"
 description = "Dependency-free client for 6-degree-of-freedom input devices (SpaceMouse, SpaceNavigator, Spaceball) on Unix."
-keywords = ["spacenavd", "6dof", "input", "cad"]
-categories = ["hardware-support"]
 readme = "README.md"
+repository = "https://github.com/gilbertorconde/sixdof"
+homepage = "https://github.com/gilbertorconde/sixdof"
+keywords = ["spacenavd", "spacemouse", "6dof", "input", "cad"]
+categories = ["hardware-support", "os::unix-apis"]
+
+# The display-server backend is behind a feature, so docs.rs is told to build
+# with it — otherwise half the crate would be missing from the docs.
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 default = []
