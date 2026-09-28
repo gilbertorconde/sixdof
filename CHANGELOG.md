@@ -4,6 +4,22 @@ All notable changes to this crate are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the crate
 follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-28
+
+### Added
+
+- macOS and Windows: the device read directly over USB HID
+  (`hid_device::Client`), through hidapi. On macOS the device is opened
+  shared, and spacenavd is tried first.
+- `Backend::Hid`, what `Source::backend` reports for that route.
+
+### Changed
+
+- The crate builds on every platform. `Client`, `Config`, `ButtonAction`,
+  `LedMode`, `socket_path` and `DEFAULT_SOCKET` are Unix only.
+- `Source::as_raw_fd` returns `Option<RawFd>`: `None` for the USB HID route,
+  which has no descriptor to wait on.
+
 ## [0.1.0] — 2026-09-18
 
 First release.
@@ -29,4 +45,5 @@ First release.
 - `Source`: whichever route answers — the daemon first, the display server
   after.
 
+[0.2.0]: https://github.com/gilbertorconde/sixdof/releases/tag/v0.2.0
 [0.1.0]: https://github.com/gilbertorconde/sixdof/releases/tag/v0.1.0

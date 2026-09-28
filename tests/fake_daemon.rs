@@ -1,6 +1,8 @@
 //! The client against a daemon written for the test, so the whole connection
 //! — handshake, requests, string transfers, events — runs with no hardware.
 
+#![cfg(unix)]
+
 use std::io::{ErrorKind, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;

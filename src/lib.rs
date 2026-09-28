@@ -1,9 +1,11 @@
-//! A dependency-free client for the spacenavd input daemon.
+//! A client for 6-degree-of-freedom input devices on Linux, macOS and
+//! Windows.
 //!
-//! spacenavd owns the 6-degree-of-freedom device — detection, calibration,
-//! dead zones, axis inversion, LEDs — and publishes events on a UNIX socket.
-//! This crate speaks that socket protocol directly: no C library, no unsafe
-//! code, nothing but `std`.
+//! On Unix, spacenavd owns the device — detection, calibration, dead zones,
+//! axis inversion, LEDs — and publishes events on a UNIX socket; this crate
+//! speaks that socket protocol directly: no C library, no unsafe code,
+//! nothing but `std`. On Windows, and on macOS without spacenavd, it reads
+//! the device's own USB HID reports (the `hid_device` module).
 //!
 //! ```no_run
 //! let mut client = sixdof::Client::connect()?;
@@ -17,22 +19,34 @@
 //! # Ok::<(), sixdof::Error>(())
 //! ```
 //!
-//! Without the daemon running there is no socket to open and [`Client::connect`]
-//! fails; treat that as an ordinary state and retry.
+//! With no route answering (no daemon, no device plugged in),
+//! [`Source::connect`] fails; treat that as an ordinary state and retry.
 
-#![cfg(unix)]
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+#[cfg(unix)]
 mod client;
+#[cfg(unix)]
 mod codec;
+#[cfg(unix)]
 mod config;
-#[cfg(feature = "magellan")]
+// The reports are read on Windows and macOS; decoding them is plain code,
+// tested everywhere.
+#[cfg(any(windows, target_os = "macos", test))]
+mod hid;
+/// The device read over USB HID: Windows, and macOS without spacenavd.
+#[cfg(any(windows, target_os = "macos"))]
+pub mod hid_device;
+#[cfg(all(unix, feature = "magellan"))]
 pub mod magellan;
+#[cfg(unix)]
 mod request;
 mod source;
 
+#[cfg(unix)]
 pub use client::{Client, DEFAULT_SOCKET, socket_path};
+#[cfg(unix)]
 pub use config::{ButtonAction, Config, LedMode};
 pub use source::{Backend, Source};
 
@@ -115,7 +129,7 @@ pub enum Event {
         pressed: bool,
     },
     /// A device was plugged in or unplugged. Call
-    /// [`Client::refresh_device`] to learn what it is.
+    /// [`Source::refresh_device`] to learn what it is.
     Device {
         /// Plugged in, as opposed to unplugged.
         added: bool,

@@ -1,13 +1,17 @@
-//! Prints what the daemon reports, for checking a device by hand.
+//! Prints what the device reports, by whichever route reaches it, for
+//! checking a device by hand.
 //!
 //! ```text
 //! cargo run --example watch
 //! ```
 
-/// Reads the daemon's settings. Nothing here writes: these belong to every
-/// application on the machine.
-fn print_settings(client: &mut sixdof::Client) {
-    let mut config = client.config();
+/// Reads the daemon's settings, when a daemon is what answered. Nothing here
+/// writes: these belong to every application on the machine.
+#[cfg(unix)]
+fn print_settings(source: &mut sixdof::Source) {
+    let Some(mut config) = source.config() else {
+        return;
+    };
     println!("daemon settings:");
     println!("  sensitivity      {:?}", config.sensitivity());
     println!("  per axis         {:?}", config.axis_sensitivity());
@@ -24,20 +28,20 @@ fn print_settings(client: &mut sixdof::Client) {
     println!("  socket           {:?}", config.socket_path());
 }
 
+#[cfg(not(unix))]
+fn print_settings(_: &mut sixdof::Source) {}
+
 fn main() {
-    let mut client = match sixdof::Client::connect() {
-        Ok(client) => client,
+    let mut source = match sixdof::Source::connect() {
+        Ok(source) => source,
         Err(err) => {
-            eprintln!(
-                "cannot reach the daemon on {:?}: {err}",
-                sixdof::socket_path()
-            );
+            eprintln!("no device reachable: {err}");
             std::process::exit(1);
         }
     };
 
-    println!("protocol version {}", client.protocol_version());
-    match client.device() {
+    println!("connected by {}", source.backend());
+    match source.device() {
         Some(device) => println!(
             "device {:?} ({} axes, {} buttons, usb {:?}, type {:#x}) at {:?}",
             device.name,
@@ -47,19 +51,19 @@ fn main() {
             device.device_type,
             device.path
         ),
-        None => println!("no device connected"),
+        None => println!("no device details on this route"),
     }
 
-    print_settings(&mut client);
+    print_settings(&mut source);
 
-    client.set_name("spacenav watch").ok();
-    client.set_event_mask(sixdof::EventMask::DEFAULT).ok();
+    source.set_name("sixdof watch").ok();
+    source.set_event_mask(sixdof::EventMask::DEFAULT).ok();
 
     loop {
-        match client.read_blocking() {
+        match source.read_blocking() {
             Ok(sixdof::Event::Device { added, .. }) => {
                 println!("device {}", if added { "added" } else { "removed" });
-                match client.refresh_device() {
+                match source.refresh_device() {
                     Ok(Some(device)) => println!("  now {:?}", device.name),
                     Ok(None) => println!("  now nothing"),
                     Err(err) => println!("  query failed: {err}"),

@@ -1,15 +1,15 @@
 [package]
 name = "sixdof"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.98"
-description = "Dependency-free client for 6-degree-of-freedom input devices (SpaceMouse, SpaceNavigator, Spaceball) on Unix."
+description = "Client for 6-degree-of-freedom input devices (SpaceMouse, SpaceNavigator, Spaceball) on Linux, macOS and Windows: spacenavd on Unix, the device's own USB HID reports elsewhere."
 readme = "README.md"
 repository = "https://github.com/gilbertorconde/sixdof"
 homepage = "https://github.com/gilbertorconde/sixdof"
-keywords = ["spacenavd", "spacemouse", "6dof", "input", "cad"]
-categories = ["hardware-support", "os::unix-apis"]
+keywords = ["spacenavd", "spacemouse", "6dof", "hid", "cad"]
+categories = ["hardware-support", "os::unix-apis", "os::windows-apis", "os::macos-apis"]
 
 # The display-server backend is behind a feature, so docs.rs is told to build
 # with it — otherwise half the crate would be missing from the docs.
@@ -22,5 +22,14 @@ default = []
 # connection by the vendor's own driver as well as by spacenavd.
 magellan = ["dep:x11rb"]
 
-[dependencies]
+[target.'cfg(unix)'.dependencies]
 x11rb = { version = "0.13", optional = true }
+
+# Where no daemon stands between the device and the application, its USB HID
+# reports are read directly: Windows through the system's HID API (pure Rust),
+# macOS through IOKit, opened shared so the vendor's driver keeps the device.
+[target.'cfg(windows)'.dependencies]
+hidapi = { version = "2.6", default-features = false, features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+hidapi = { version = "2.6", default-features = false, features = ["macos-shared-device"] }

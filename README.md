@@ -4,21 +4,22 @@
 [![Documentation](https://docs.rs/sixdof/badge.svg)](https://docs.rs/sixdof)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](#licence)
 
-A small, dependency-free Rust client for 6-degree-of-freedom input devices —
-SpaceMouse, SpaceNavigator, Spaceball and friends — on Unix.
+A small Rust client for 6-degree-of-freedom input devices (SpaceMouse,
+SpaceNavigator, Spaceball and friends) on Linux, macOS and Windows.
 
-It talks to [spacenavd], the free daemon that owns the device — detection,
-calibration, dead zones, per-device configuration — and publishes events on a
-UNIX socket. A client just opens that socket and reads.
+On Unix it talks to [spacenavd], the free daemon that owns the device
+(detection, calibration, dead zones, per-device configuration) and publishes
+events on a UNIX socket. Where no daemon runs (Windows, macOS without
+spacenavd) it reads the device's own USB HID reports.
 
 ```rust
-// `Source::connect` when either route will do; `Client` for the daemon alone.
-let mut client = sixdof::Client::connect()?;
-client.set_name("my-app")?;
-client.set_event_mask(sixdof::EventMask::DEFAULT)?;
+// `Source::connect` takes whichever route answers on this platform.
+let mut source = sixdof::Source::connect()?;
+source.set_name("my-app")?;
+source.set_event_mask(sixdof::EventMask::DEFAULT)?;
 
 loop {
-    match client.read_blocking()? {
+    match source.read_blocking()? {
         sixdof::Event::Motion(m) => println!("{:?} {:?}", m.translate, m.rotate),
         sixdof::Event::Button { index, pressed } => println!("button {index} {pressed}"),
         other => println!("{other:?}"),
@@ -42,10 +43,14 @@ loop {
 - Falls back to the Magellan protocol over the display server, which is what
   3Dconnexion's own driver speaks (`magellan` feature, one dependency:
   [x11rb]). `Source::connect` takes whichever route answers.
-- No C library and no unsafe code; no dependencies at all with the default
+- Reads the device directly over USB HID on Windows and macOS (through
+  [hidapi], which needs no system library on Windows; on macOS the device is
+  opened shared, so 3Dconnexion's driver keeps working beside it).
+- No unsafe code of its own; on Linux no dependencies at all with the default
   feature set.
 
 ```rust
+let mut client = sixdof::Client::connect()?;
 let mut config = client.config();
 config.set_axis_sensitivity([1.0, 1.0, 1.0, 0.5, 0.5, 0.5])?;
 config.set_led(sixdof::LedMode::On)?;
@@ -55,20 +60,24 @@ config.save()?;
 
 ## Platforms
 
-Unix only — the crate is empty on other targets, since it speaks to a daemon
-over a UNIX socket. Linux is where it is used and tested; anywhere spacenavd
-runs should work. Depend on it per-target if your own crate is portable:
+| Platform | Route                                                        |
+| -------- | ------------------------------------------------------------ |
+| Linux, BSD | spacenavd, then Magellan over the display server (`magellan` feature) |
+| macOS    | spacenavd when it runs, else the device over USB HID          |
+| Windows  | the device over USB HID                                        |
 
-```toml
-[target.'cfg(unix)'.dependencies]
-sixdof = "0.1"
-```
+`Client` and `Config` (the daemon and its settings) exist on Unix only;
+`Source` is the portable entry point. Over USB HID the axes come through as
+the device reports them, which is what spacenavd passes on too, and
+`set_sensitivity` scales them; there is no daemon configuration to read.
 
 ## What it does not do
 
-- No Windows backend.
-- No daemon-less path: without a daemon running, `connect` fails and the
-  caller is expected to retry.
+- No device configuration over USB HID beyond a sensitivity scale: dead
+  zones and mappings are the application's to apply there.
+- Only the first device found is read.
+- No hotplug over USB HID: when the device goes, reads fail with
+  `Error::Disconnected` and the caller is expected to connect again.
 
 ## Licence
 
@@ -79,3 +88,4 @@ MIT ([LICENSE-MIT]) or Apache-2.0 ([LICENSE-APACHE]), at your option.
 
 [spacenavd]: https://spacenav.sourceforge.net/
 [x11rb]: https://crates.io/crates/x11rb
+[hidapi]: https://crates.io/crates/hidapi
