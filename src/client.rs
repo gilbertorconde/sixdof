@@ -266,6 +266,7 @@ impl Client {
                 Ok(read) => filled += read,
                 Err(err) if err.kind() == ErrorKind::Interrupted => {}
                 Err(err) if would_block(&err) => break,
+                Err(err) if gone(&err) => return Err(Error::Disconnected),
                 Err(err) => return Err(Error::Io(err)),
             }
         }
@@ -357,6 +358,7 @@ impl Client {
                 Ok(read) => self.filled += read,
                 Err(err) if err.kind() == ErrorKind::Interrupted => {}
                 Err(err) if would_block(&err) => return Ok(None),
+                Err(err) if gone(&err) => return Err(Error::Disconnected),
                 Err(err) => return Err(Error::Io(err)),
             }
         }
@@ -391,6 +393,16 @@ impl Client {
 /// whose read timeout expired.
 fn would_block(err: &std::io::Error) -> bool {
     matches!(err.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut)
+}
+
+/// Whether a read failed because the daemon went away. Some systems reset
+/// the connection rather than end it when the daemon closes with requests
+/// still unread.
+fn gone(err: &std::io::Error) -> bool {
+    matches!(
+        err.kind(),
+        ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::BrokenPipe
+    )
 }
 
 #[cfg(test)]

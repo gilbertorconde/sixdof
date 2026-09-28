@@ -8,10 +8,10 @@
 //! the device's own USB HID reports (the `hid_device` module).
 //!
 //! ```no_run
-//! let mut client = sixdof::Client::connect()?;
-//! client.set_name("my-app")?;
+//! let mut source = sixdof::Source::connect()?;
+//! source.set_name("my-app")?;
 //! loop {
-//!     match client.read_blocking()? {
+//!     match source.read_blocking()? {
 //!         sixdof::Event::Motion(m) => println!("{:?} {:?}", m.translate, m.rotate),
 //!         other => println!("{other:?}"),
 //!     }
