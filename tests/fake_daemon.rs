@@ -649,7 +649,8 @@ fn a_daemon_that_stops_surfaces_as_a_disconnect() {
     let mut client = daemon.client();
     daemon.shutdown();
 
-    assert!(matches!(client.read_blocking(), Err(Error::Disconnected)));
+    let got = client.read_blocking();
+    assert!(matches!(got, Err(Error::Disconnected)), "{got:?}");
 }
 
 #[test]

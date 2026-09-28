@@ -370,22 +370,32 @@ impl Client {
         if self.mode == mode {
             return Ok(());
         }
-        match mode {
-            Mode::Blocking => {
-                self.stream.set_nonblocking(false)?;
-                self.stream.set_read_timeout(None)?;
+        let set = match mode {
+            Mode::Blocking => self
+                .stream
+                .set_nonblocking(false)
+                .and_then(|()| self.stream.set_read_timeout(None)),
+            Mode::Nonblocking => self
+                .stream
+                .set_read_timeout(None)
+                .and_then(|()| self.stream.set_nonblocking(true)),
+            Mode::Deadline(timeout) => self
+                .stream
+                .set_nonblocking(false)
+                .and_then(|()| self.stream.set_read_timeout(Some(timeout))),
+        };
+        match set {
+            Ok(()) => {
+                self.mode = mode;
+                Ok(())
             }
-            Mode::Nonblocking => {
-                self.stream.set_read_timeout(None)?;
-                self.stream.set_nonblocking(true)?;
+            // macOS refuses socket options on a connection the daemon has
+            // closed, before any read could tell.
+            Err(err) if err.kind() == ErrorKind::InvalidInput || gone(&err) => {
+                Err(Error::Disconnected)
             }
-            Mode::Deadline(timeout) => {
-                self.stream.set_nonblocking(false)?;
-                self.stream.set_read_timeout(Some(timeout))?;
-            }
+            Err(err) => Err(Error::Io(err)),
         }
-        self.mode = mode;
-        Ok(())
     }
 }
 
