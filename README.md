@@ -62,14 +62,15 @@ config.save()?;
 
 | Platform | Route                                                        |
 | -------- | ------------------------------------------------------------ |
-| Linux, BSD | spacenavd, then Magellan over the display server (`magellan` feature) |
+| Linux, BSD | spacenavd, then Magellan over the display server (`magellan` feature), then on Linux the device over USB HID (`hid` feature) |
 | macOS    | spacenavd when it runs, else the device over USB HID          |
 | Windows  | the device over USB HID                                        |
 
 `Client` and `Config` (the daemon and its settings) exist on Unix only;
-`Source` is the portable entry point. Over USB HID the axes come through as
-the device reports them, which is what spacenavd passes on too, and
-`set_sensitivity` scales them; there is no daemon configuration to read.
+`Source` is the portable entry point. Over USB HID the numbers are the ones
+spacenavd would give (each axis onto ±500, the models' own axis and button
+quirks undone), and `set_sensitivity` scales them; there is no daemon
+configuration to read.
 
 ## What it does not do
 

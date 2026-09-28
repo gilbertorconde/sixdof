@@ -48,6 +48,10 @@ impl Client {
             .find(|d| is_puck(d.vendor_id(), d.product_id(), d.usage_page(), d.usage()))
             .ok_or(Error::Refused)?;
         let device = found.open_device(&api).map_err(hid_error)?;
+        let mut descriptor = [0u8; hidapi::MAX_REPORT_DESCRIPTOR_SIZE];
+        let length = device.get_report_descriptor(&mut descriptor).unwrap_or(0);
+        let decoder =
+            Decoder::for_device(found.vendor_id(), found.product_id(), &descriptor[..length]);
         let name = found
             .product_string()
             .map(str::to_string)
@@ -68,7 +72,7 @@ impl Client {
         Ok(Client {
             device,
             info,
-            decoder: Decoder::new(),
+            decoder,
             pending,
         })
     }

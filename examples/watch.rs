@@ -3,6 +3,7 @@
 //!
 //! ```text
 //! cargo run --example watch
+//! cargo run --example watch --features hid -- --hid   # skip the daemon
 //! ```
 
 /// Reads the daemon's settings, when a daemon is what answered. Nothing here
@@ -31,8 +32,18 @@ fn print_settings(source: &mut sixdof::Source) {
 #[cfg(not(unix))]
 fn print_settings(_: &mut sixdof::Source) {}
 
+/// The route asked for: `--hid` reads the device directly, where this build
+/// can.
+fn connect() -> Result<sixdof::Source, sixdof::Error> {
+    #[cfg(hid_route)]
+    if std::env::args().any(|arg| arg == "--hid") {
+        return sixdof::hid_device::Client::connect().map(sixdof::Source::Hid);
+    }
+    sixdof::Source::connect()
+}
+
 fn main() {
-    let mut source = match sixdof::Source::connect() {
+    let mut source = match connect() {
         Ok(source) => source,
         Err(err) => {
             eprintln!("no device reachable: {err}");

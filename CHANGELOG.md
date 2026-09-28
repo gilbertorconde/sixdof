@@ -12,6 +12,12 @@ follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   (`hid_device::Client`), through hidapi. On macOS the device is opened
   shared, and spacenavd is tried first.
 - `Backend::Hid`, what `Source::backend` reports for that route.
+- `hid` feature: the same route on Linux, over hidraw, for a machine with no
+  daemon.
+- Over USB HID the numbers are the daemon's: each axis taken from the range
+  the device declares onto ±500, y and z swapped and turned on the models
+  whose axes run that way, the Pro and Enterprise buttons counted from 0,
+  and a motion told only when the axes changed.
 
 ### Changed
 

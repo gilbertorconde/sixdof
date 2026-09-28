@@ -33,10 +33,10 @@ mod codec;
 mod config;
 // The reports are read on Windows and macOS; decoding them is plain code,
 // tested everywhere.
-#[cfg(any(windows, target_os = "macos", test))]
+#[cfg(any(hid_route, test))]
 mod hid;
 /// The device read over USB HID: Windows, and macOS without spacenavd.
-#[cfg(any(windows, target_os = "macos"))]
+#[cfg(hid_route)]
 pub mod hid_device;
 #[cfg(all(unix, feature = "magellan"))]
 pub mod magellan;

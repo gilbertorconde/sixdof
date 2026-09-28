@@ -43,7 +43,7 @@ pub enum Source {
     #[cfg(all(unix, feature = "magellan"))]
     Magellan(Box<crate::magellan::Client>),
     /// The device read directly over USB HID.
-    #[cfg(any(windows, target_os = "macos"))]
+    #[cfg(hid_route)]
     Hid(crate::hid_device::Client),
 }
 
@@ -55,7 +55,7 @@ macro_rules! each {
             Source::Daemon($client) => $body,
             #[cfg(all(unix, feature = "magellan"))]
             Source::Magellan($client) => $body,
-            #[cfg(any(windows, target_os = "macos"))]
+            #[cfg(hid_route)]
             Source::Hid($client) => $body,
         }
     };
@@ -76,7 +76,7 @@ impl Source {
         if let Ok(client) = crate::magellan::Client::connect() {
             return Ok(Source::Magellan(Box::new(client)));
         }
-        #[cfg(any(windows, target_os = "macos"))]
+        #[cfg(hid_route)]
         {
             #[cfg(unix)]
             if let Ok(client) = crate::hid_device::Client::connect() {
@@ -97,7 +97,7 @@ impl Source {
             Source::Daemon(_) => Backend::Daemon,
             #[cfg(all(unix, feature = "magellan"))]
             Source::Magellan(_) => Backend::Magellan,
-            #[cfg(any(windows, target_os = "macos"))]
+            #[cfg(hid_route)]
             Source::Hid(_) => Backend::Hid,
         }
     }
@@ -144,7 +144,7 @@ impl Source {
             Source::Daemon(client) => client.device(),
             #[cfg(all(unix, feature = "magellan"))]
             Source::Magellan(_) => None,
-            #[cfg(any(windows, target_os = "macos"))]
+            #[cfg(hid_route)]
             Source::Hid(client) => client.device(),
         }
     }
@@ -156,7 +156,7 @@ impl Source {
             Source::Daemon(client) => client.refresh_device(),
             #[cfg(all(unix, feature = "magellan"))]
             Source::Magellan(_) => Ok(None),
-            #[cfg(any(windows, target_os = "macos"))]
+            #[cfg(hid_route)]
             Source::Hid(client) => Ok(client.device()),
         }
     }
@@ -196,7 +196,7 @@ impl Source {
             Source::Daemon(client) => Some(client.as_raw_fd()),
             #[cfg(feature = "magellan")]
             Source::Magellan(client) => Some(client.as_raw_fd()),
-            #[cfg(target_os = "macos")]
+            #[cfg(hid_route)]
             Source::Hid(_) => None,
         }
     }

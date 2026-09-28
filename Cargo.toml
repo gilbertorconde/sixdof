@@ -21,13 +21,20 @@ default = []
 # The second backend: the Magellan protocol, spoken over a display-server
 # connection by the vendor's own driver as well as by spacenavd.
 magellan = ["dep:x11rb"]
+# The device's own USB HID reports on Linux too (hidraw), for a machine with
+# no daemon. Windows and macOS always have this route.
+hid = ["dep:hidapi"]
 
 [target.'cfg(unix)'.dependencies]
 x11rb = { version = "0.13", optional = true }
 
 # Where no daemon stands between the device and the application, its USB HID
 # reports are read directly: Windows through the system's HID API (pure Rust),
-# macOS through IOKit, opened shared so the vendor's driver keeps the device.
+# macOS through IOKit, opened shared so the vendor's driver keeps the device,
+# Linux through hidraw behind the `hid` feature.
+[target.'cfg(target_os = "linux")'.dependencies]
+hidapi = { version = "2.6", default-features = false, features = ["linux-native-basic-udev"], optional = true }
+
 [target.'cfg(windows)'.dependencies]
 hidapi = { version = "2.6", default-features = false, features = ["windows-native"] }
 
