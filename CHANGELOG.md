@@ -4,6 +4,22 @@ All notable changes to this crate are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the crate
 follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `hid`, the report decoding on its own, public and built everywhere: a
+  `Decoder` that turns a device's reports into the daemon's events, made
+  from the report descriptor (`for_device`) or from axis ranges already
+  parsed (`with_ranges`), and `is_puck`, `VENDORS`, `USAGE_PAGE` and
+  `USAGE` to find the device. An application that reads the reports
+  itself, a browser page through WebHID say, gets the same numbers.
+
+### Changed
+
+- The crate builds for targets with no route (`wasm32-unknown-unknown`):
+  only `hid` and the event types are there, `Source` and `Backend` are not.
+
 ## [0.2.0] - 2026-09-28
 
 ### Added

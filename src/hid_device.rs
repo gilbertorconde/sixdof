@@ -25,6 +25,8 @@ pub struct Client {
     info: DeviceInfo,
     decoder: Decoder,
     pending: VecDeque<Event>,
+    /// The moment the reports' times count from.
+    opened: Instant,
 }
 
 impl std::fmt::Debug for Client {
@@ -74,6 +76,7 @@ impl Client {
             info,
             decoder,
             pending,
+            opened: Instant::now(),
         })
     }
 
@@ -131,7 +134,7 @@ impl Client {
             .map_err(|_| Error::Disconnected)?;
         if read > 0 {
             self.decoder
-                .feed(&buf[..read], Instant::now(), &mut self.pending);
+                .feed(&buf[..read], self.opened.elapsed(), &mut self.pending);
         }
         Ok(self.pending.pop_front())
     }

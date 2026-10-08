@@ -15,23 +15,29 @@
 //! number them sparsely counted from 0. Devices repeat their reports many
 //! hundred times a second whether the puck moves or not; a motion is told
 //! only when the axes changed, as the daemon does.
+//!
+//! The decoding is plain code that builds everywhere, so an application
+//! reading the reports some other way (a browser page's WebHID, say) gets
+//! the same numbers: find the device with [`is_puck`] or [`VENDORS`] and
+//! [`USAGE_PAGE`]/[`USAGE`], make a [`Decoder`] for it and
+//! [`feed`](Decoder::feed) it each report.
 
 use std::collections::VecDeque;
-use std::time::Instant;
+use std::time::Duration;
 
 use crate::{DeviceInfo, Event, Motion};
 
 /// Vendors whose 6-degree-of-freedom devices speak these reports.
-pub(crate) const VENDORS: [u16; 2] = [LOGITECH, CONNEXION];
+pub const VENDORS: [u16; 2] = [LOGITECH, CONNEXION];
 /// The Logitech-era 3Dconnexion devices.
 const LOGITECH: u16 = 0x046d;
 /// 3Dconnexion.
 const CONNEXION: u16 = 0x256f;
 
+/// The HID usage page of a multi-axis controller (generic desktop).
+pub const USAGE_PAGE: u16 = 0x01;
 /// The HID usage of a multi-axis controller (generic desktop page).
-pub(crate) const USAGE_PAGE: u16 = 0x01;
-/// The HID usage of a multi-axis controller (generic desktop page).
-pub(crate) const USAGE: u16 = 0x08;
+pub const USAGE: u16 = 0x08;
 
 /// The range every axis is taken onto.
 const RANGE: (i32, i32) = (-500, 500);
@@ -39,7 +45,7 @@ const RANGE: (i32, i32) = (-500, 500);
 /// Whether a HID interface is a 6-degree-of-freedom device: a multi-axis
 /// controller, or failing a usage (some systems do not report one), a
 /// 3Dconnexion product.
-pub(crate) fn is_puck(vendor: u16, product: u16, usage_page: u16, usage: u16) -> bool {
+pub fn is_puck(vendor: u16, product: u16, usage_page: u16, usage: u16) -> bool {
     if usage_page == USAGE_PAGE && usage == USAGE {
         return true;
     }
@@ -118,7 +124,7 @@ fn button_map(vendor: u16, product: u16) -> Option<ButtonMap> {
 }
 
 /// How many buttons a device has, by its product, when known.
-pub(crate) fn button_count(vendor: u16, product: u16) -> u32 {
+pub fn button_count(vendor: u16, product: u16) -> u32 {
     if !VENDORS.contains(&vendor) {
         return 0;
     }
@@ -134,7 +140,7 @@ pub(crate) fn button_count(vendor: u16, product: u16) -> u32 {
 }
 
 /// What is known of a device from its HID descriptor.
-pub(crate) fn device_info(name: &str, path: &str, vendor: u16, product: u16) -> DeviceInfo {
+pub fn device_info(name: &str, path: &str, vendor: u16, product: u16) -> DeviceInfo {
     DeviceInfo {
         name: name.to_string(),
         path: Some(path.to_string()),
@@ -147,7 +153,7 @@ pub(crate) fn device_info(name: &str, path: &str, vendor: u16, product: u16) -> 
 
 /// The logical range a report descriptor declares for each of the six axes
 /// (x, y, z, then the turns about them), where it declares one.
-pub(crate) fn axis_ranges(descriptor: &[u8]) -> [Option<(i32, i32)>; 6] {
+pub fn axis_ranges(descriptor: &[u8]) -> [Option<(i32, i32)>; 6] {
     let mut ranges = [None; 6];
     let (mut page, mut min, mut max) = (0u32, 0i32, 0i32);
     let mut usages: Vec<u32> = Vec::new();
@@ -216,12 +222,12 @@ pub(crate) fn axis_ranges(descriptor: &[u8]) -> [Option<(i32, i32)>; 6] {
 /// The state a device's reports build up: where the puck is, which
 /// buttons are down, and when the last motion was.
 #[derive(Debug)]
-pub(crate) struct Decoder {
+pub struct Decoder {
     /// The six axes as the device last gave them.
     raw: [i32; 6],
     /// The button report's bits as last given.
     buttons: Vec<u8>,
-    last_motion: Option<Instant>,
+    last_motion: Option<Duration>,
     /// The axes the last motion told.
     told: ([i32; 3], [i32; 3]),
     /// Each axis's declared range, taken onto [`RANGE`].
@@ -230,6 +236,12 @@ pub(crate) struct Decoder {
     button_map: Option<ButtonMap>,
     /// Scales every axis reading.
     pub sensitivity: f32,
+}
+
+impl Default for Decoder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Decoder {
@@ -250,7 +262,13 @@ impl Decoder {
     /// A decoder for one model, its axes taken from the ranges its report
     /// descriptor declares (the device's own numbers where it declares none).
     pub fn for_device(vendor: u16, product: u16, descriptor: &[u8]) -> Self {
-        let declared = axis_ranges(descriptor);
+        Self::with_ranges(vendor, product, axis_ranges(descriptor))
+    }
+
+    /// A decoder for one model whose axes' declared ranges are known
+    /// already (x, y, z, then the turns about them), as from a system that
+    /// parses the report descriptor itself.
+    pub fn with_ranges(vendor: u16, product: u16, declared: [Option<(i32, i32)>; 6]) -> Self {
         Self {
             ranges: declared.map(|range| range.unwrap_or(RANGE)),
             swap_yz: swaps_yz(vendor, product),
@@ -261,8 +279,10 @@ impl Decoder {
 
     /// Takes one report (its id first), leaving the events it makes in
     /// `out`: a motion for the axes, a button event for each button that
-    /// changed. Reports of other kinds are passed over.
-    pub fn feed(&mut self, report: &[u8], now: Instant, out: &mut VecDeque<Event>) {
+    /// changed. Reports of other kinds are passed over. `now` is the time
+    /// since any fixed moment, the same one for every report, which gives a
+    /// motion its period.
+    pub fn feed(&mut self, report: &[u8], now: Duration, out: &mut VecDeque<Event>) {
         let Some((&id, data)) = report.split_first() else {
             return;
         };
@@ -313,7 +333,7 @@ impl Decoder {
 
     /// The puck as it stands, in the daemon's terms, and the time since the
     /// last motion; nothing when that is what the last motion told.
-    fn motion(&mut self, now: Instant) -> Option<Event> {
+    fn motion(&mut self, now: Duration) -> Option<Event> {
         let mut axes = [0i32; 6];
         for (i, value) in self.raw.iter().enumerate() {
             let (min, max) = self.ranges[i];
@@ -340,7 +360,7 @@ impl Decoder {
         self.told = told;
         let period_ms = self
             .last_motion
-            .map_or(0, |then| now.duration_since(then).as_millis() as u32);
+            .map_or(0, |then| now.saturating_sub(then).as_millis() as u32);
         self.last_motion = Some(now);
         Some(Event::Motion(Motion {
             translate: told.0,
@@ -364,7 +384,7 @@ mod tests {
 
     fn events(decoder: &mut Decoder, report: &[u8]) -> Vec<Event> {
         let mut out = VecDeque::new();
-        decoder.feed(report, Instant::now(), &mut out);
+        decoder.feed(report, Duration::ZERO, &mut out);
         out.into()
     }
 

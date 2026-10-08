@@ -72,6 +72,10 @@ spacenavd would give (each axis onto ±500, the models' own axis and button
 quirks undone), and `set_sensitivity` scales them; there is no daemon
 configuration to read.
 
+On a target with no route (a browser page), the `hid` module alone is
+there: its `Decoder` turns reports the application reads itself (through
+WebHID, say) into the same events.
+
 ## What it does not do
 
 - No device configuration over USB HID beyond a sensitivity scale: dead

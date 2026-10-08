@@ -31,10 +31,7 @@ mod client;
 mod codec;
 #[cfg(unix)]
 mod config;
-// The reports are read on Windows and macOS; decoding them is plain code,
-// tested everywhere.
-#[cfg(any(hid_route, test))]
-mod hid;
+pub mod hid;
 /// The device read over USB HID: Windows, and macOS without spacenavd.
 #[cfg(hid_route)]
 pub mod hid_device;
@@ -42,12 +39,14 @@ pub mod hid_device;
 pub mod magellan;
 #[cfg(unix)]
 mod request;
+#[cfg(any(unix, hid_route))]
 mod source;
 
 #[cfg(unix)]
 pub use client::{Client, DEFAULT_SOCKET, socket_path};
 #[cfg(unix)]
 pub use config::{ButtonAction, Config, LedMode};
+#[cfg(any(unix, hid_route))]
 pub use source::{Backend, Source};
 
 use std::fmt;
