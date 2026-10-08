@@ -4,7 +4,7 @@ All notable changes to this crate are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the crate
 follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2026-10-08
 
 ### Added
 
@@ -67,5 +67,6 @@ First release.
 - `Source`: whichever route answers — the daemon first, the display server
   after.
 
+[0.2.1]: https://github.com/gilbertorconde/sixdof/releases/tag/v0.2.1
 [0.2.0]: https://github.com/gilbertorconde/sixdof/releases/tag/v0.2.0
 [0.1.0]: https://github.com/gilbertorconde/sixdof/releases/tag/v0.1.0
